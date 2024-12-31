@@ -1,6 +1,7 @@
 // routes/auth.js
 const express = require("express");
 const router = express.Router();
+const { register, login } = require("../controllers/authController");
 const { body } = require("express-validator");
 
 router.post(
@@ -10,17 +11,13 @@ router.post(
     body("password").isLength({ min: 6 }),
     body("username").isLength({ min: 3 }),
   ],
-  async (req, res) => {
-    // Registration logic will go here
-  }
+  register
 );
 
 router.post(
   "/login",
   [body("email").isEmail(), body("password").exists()],
-  async (req, res) => {
-    // Login logic will go here
-  }
+  login
 );
 
 module.exports = router;
