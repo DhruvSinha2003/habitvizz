@@ -1,4 +1,3 @@
-// src/theme/ThemeContext.js
 import { createContext, useContext, useEffect, useState } from "react";
 import { themes } from "../theme/colors";
 
@@ -6,6 +5,7 @@ const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [currentTheme, setCurrentTheme] = useState("dark");
+  const themeKeys = Object.keys(themes);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || "dark";
@@ -25,7 +25,10 @@ export const ThemeProvider = ({ children }) => {
   };
 
   const toggleTheme = () => {
-    const newTheme = currentTheme === "dark" ? "light" : "dark";
+    const currentIndex = themeKeys.indexOf(currentTheme);
+    const nextIndex = (currentIndex + 1) % themeKeys.length;
+    const newTheme = themeKeys[nextIndex];
+
     setCurrentTheme(newTheme);
     applyTheme(newTheme);
   };
