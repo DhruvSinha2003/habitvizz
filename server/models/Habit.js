@@ -16,7 +16,22 @@ const habitSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ["health", "work", "learning", "other"],
+    enum: [
+      "health",
+      "work",
+      "learning",
+      "fitness",
+      "mindfulness",
+      "productivity",
+      "social",
+      "finance",
+      "custom",
+      "other",
+    ],
+  },
+  customCategory: {
+    type: String,
+    trim: true,
   },
   frequency: {
     type: String,

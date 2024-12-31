@@ -8,10 +8,13 @@ import {
 import Header from "./components/Header";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import EditHabit from "./pages/EditHabit";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
+import NewHabit from "./pages/NewHabit";
 import Profile from "./pages/Profile";
 import Register from "./pages/Register";
+import ViewHabit from "./pages/ViewHabit";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -59,6 +62,31 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/habits/new"
+            element={
+              <ProtectedRoute>
+                <NewHabit />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/habits/:id/edit"
+            element={
+              <ProtectedRoute>
+                <EditHabit />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/view-habit/:id"
+            element={
+              <ProtectedRoute>
+                <ViewHabit />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<div>Page not found</div>} />
         </Routes>
       </div>
     </Router>

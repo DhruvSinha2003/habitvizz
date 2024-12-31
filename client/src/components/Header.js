@@ -23,8 +23,9 @@ export default function Header() {
         </Link>
 
         <div className="flex items-center space-x-4">
-          <button className="btn-primary">New Habit</button>
-
+          <Link to="/habits/new">
+            <button className="btn-primary">New Habit</button>
+          </Link>
           <button
             onClick={toggleTheme}
             className="p-2 hover:bg-theme-secondary rounded-full"

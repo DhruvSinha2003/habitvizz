@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import HabitCard from "../components/HabitCard";
 import { useAuth } from "../context/AuthContext";
+import api from "../utils/api";
 
 const HeatmapPlaceholder = () => (
   <div className="bg-theme-primary h-64 rounded-xl shadow-lg p-6">
@@ -43,21 +45,23 @@ const TaskChecklist = () => (
   </div>
 );
 
-const HabitCard = ({ title = "Habit", progress = 0 }) => (
-  <div className="bg-theme-primary p-6 rounded-xl shadow-lg">
-    <h3 className="text-lg font-semibold text-theme-accent mb-2">{title}</h3>
-    <div className="w-full bg-theme-secondary/20 rounded-full h-2">
-      <div
-        className="bg-theme-accent h-2 rounded-full transition-all duration-300"
-        style={{ width: `${progress}%` }}
-      />
-    </div>
-    <p className="mt-2 text-theme-secondary text-sm">{progress}% Complete</p>
-  </div>
-);
-
 export default function Home() {
   const { user } = useAuth();
+  const [habits, setHabits] = useState([]);
+
+  useEffect(() => {
+    const fetchHabits = async () => {
+      try {
+        const response = await api.get("/api/habits"); // Properly await the API call
+        setHabits(response.data || []); // Ensure the data is an array or fallback to an empty array
+      } catch (err) {
+        console.error("Error fetching habits", err);
+        setHabits([]); // Fallback to an empty array on error
+      }
+    };
+
+    fetchHabits();
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -85,12 +89,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Habits Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <HabitCard title="Morning Routine" progress={75} />
-          <HabitCard title="Exercise" progress={60} />
-          <HabitCard title="Reading" progress={45} />
-          <HabitCard title="Meditation" progress={90} />
+          {Array.isArray(habits) &&
+            habits.map((habit) => <HabitCard key={habit._id} habit={habit} />)}
         </div>
       </div>
     </div>
