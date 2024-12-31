@@ -67,7 +67,7 @@ export default function Home() {
           <h1 className="text-4xl font-bold text-theme-accent">
             Hello, {user?.username || "User"}
           </h1>
-          <p className="text-theme-secondary mt-2">
+          <p className="text-theme-accent mt-2">
             Track your progress and build better habits
           </p>
         </div>

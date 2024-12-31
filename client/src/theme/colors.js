@@ -1,45 +1,44 @@
-// src/theme/colors.js
 export const themes = {
   dark: {
-    background: "#252A34",
-    primary: "#0F4C75",
-    secondary: "#3282B8",
-    accent: "#08D9D6",
-  },
-  light: {
-    background: "#EDF1D6",
-    primary: "#40513B",
-    secondary: "#A2B29F",
-    accent: "#DDFFBC",
-  },
-  ocean: {
     background: "#1B3A4B",
     primary: "#145374",
     secondary: "#5588A3",
-    accent: "#E8F1F2",
+    accent: "#D9EAF1",
+  },
+  light: {
+    background: "#F8F9FA",
+    primary: "#2D4059",
+    secondary: "#CED4DA",
+    accent: "#F07B3F",
+  },
+  ocean: {
+    background: "#D9EAF1",
+    primary: "#89CFF0",
+    secondary: "#074799",
+    accent: "#0A97B0",
   },
   sunset: {
-    background: "#FFE8D6",
-    primary: "#FF7F51",
-    secondary: "#FFB884",
-    accent: "#F5C7A9",
+    background: "#FFF1E6",
+    primary: "#FF6F61",
+    secondary: "#6A1E55",
+    accent: "#D91656",
   },
   forest: {
-    background: "#1E5128",
-    primary: "#4E9F3D",
-    secondary: "#D8E9A8",
-    accent: "#F5FFFA",
+    background: "#2D6A4F",
+    primary: "#52B788",
+    secondary: "#1A3636",
+    accent: "#F1FAEE",
   },
   pastel: {
-    background: "#FFFBDB",
-    primary: "#FF9A8B",
-    secondary: "#FFC3A0",
-    accent: "#D9AFD9",
+    background: "#FFF7F1",
+    primary: "#FAD6A5",
+    secondary: "#8967B3",
+    accent: "#A888B5",
   },
   grayscale: {
-    background: "#1C1C1C",
-    primary: "#3E3E3E",
-    secondary: "#A9A9A9",
-    accent: "#E0E0E0",
+    background: "#2C2C2C", // Slightly lighter than original
+    primary: "#5A5A5A",
+    secondary: "#B0B0B0",
+    accent: "#F0F0F0", // Crisp white for clarity
   },
 };
