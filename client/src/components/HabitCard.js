@@ -2,6 +2,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
+// HabitCard.js
 const HabitCard = ({ habit }) => {
   const navigate = useNavigate();
 
@@ -15,39 +16,39 @@ const HabitCard = ({ habit }) => {
   return (
     <div
       onClick={() => navigate(`/view-habit/${habit._id}`)}
-      className="bg-theme-primary rounded-xl p-4 hover:shadow-lg transition-shadow cursor-pointer"
+      className="bg-white rounded-xl p-6 hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100"
     >
-      <div className="pb-2">
-        <div className="flex justify-between items-start">
-          <h3 className="text-lg font-semibold text-theme-accent">
-            {habit.title}
-          </h3>
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: habit.color }}
-          />
-        </div>
+      <div className="flex justify-between items-start mb-4">
+        <h3 className="text-xl font-semibold text-gray-800">{habit.title}</h3>
+        <div
+          className="w-4 h-4 rounded-full"
+          style={{ backgroundColor: habit.color }}
+        />
       </div>
+
       <div className="space-y-4">
-        <div className="w-full bg-theme-secondary/20 rounded-full h-2">
+        <div className="w-full bg-gray-100 rounded-full h-3">
           <div
-            className="bg-theme-accent h-2 rounded-full"
-            style={{ width: `${calculateProgress()}%` }}
+            className="h-3 rounded-full transition-all duration-300"
+            style={{
+              width: `${calculateProgress()}%`,
+              backgroundColor: habit.color,
+            }}
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-sm text-theme-secondary">
-          <div className="flex items-center gap-1">
-            <span>📅</span>
-            <span>{habit.frequency}</span>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
+            <span className="text-sm text-gray-500">Frequency</span>
+            <span className="font-medium">{habit.frequency}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <span>✓</span>
-            <span>{calculateProgress()}%</span>
+          <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
+            <span className="text-sm text-gray-500">Progress</span>
+            <span className="font-medium">{calculateProgress()}%</span>
           </div>
-          <div className="flex items-center gap-1">
-            <span>🏆</span>
-            <span>{habit.streak.current}</span>
+          <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
+            <span className="text-sm text-gray-500">Streak</span>
+            <span className="font-medium">🔥 {habit.streak.current}</span>
           </div>
         </div>
       </div>

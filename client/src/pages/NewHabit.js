@@ -1,3 +1,4 @@
+// NewHabit.js
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -13,6 +14,7 @@ const NewHabit = () => {
     category: "other",
     customCategory: "",
     frequency: "daily",
+    customFrequency: "",
     customDays: [],
     color: "#008170",
     priority: 3,
@@ -23,32 +25,31 @@ const NewHabit = () => {
     try {
       const dataToSubmit = {
         ...formData,
-        user: user.id, // Include user ID from auth context
+        user: user.id,
         customCategory:
           formData.category === "custom" ? formData.customCategory : undefined,
+        customFrequency:
+          formData.frequency === "custom"
+            ? formData.customFrequency
+            : undefined,
       };
       await api.post("/api/habits", dataToSubmit);
       toast.success("Habit created successfully!");
       navigate("/");
     } catch (err) {
-      if (err.response?.status === 401) {
-        toast.error("Please login again");
-        navigate("/login");
-      } else {
-        toast.error(err.response?.data?.message || "Error creating habit");
-      }
+      toast.error(err.response?.data?.message || "Error creating habit");
     }
   };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="bg-theme-primary rounded-xl shadow-lg p-8">
+      <div className="bg-white rounded-xl shadow-lg p-8">
         <h1 className="text-3xl font-bold text-theme-accent mb-6">
           Create New Habit
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
+          <div className="form-group">
             <label className="block text-theme-secondary mb-2">Title</label>
             <input
               type="text"
@@ -57,12 +58,12 @@ const NewHabit = () => {
                 setFormData({ ...formData, title: e.target.value })
               }
               required
-              className="w-full p-2 border border-theme-secondary rounded-lg focus:outline-none focus:border-theme-accent"
+              className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-theme-accent focus:border-transparent"
               placeholder="Enter habit title"
             />
           </div>
 
-          <div>
+          <div className="form-group">
             <label className="block text-theme-secondary mb-2">
               Description
             </label>
@@ -71,19 +72,19 @@ const NewHabit = () => {
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
-              className="w-full p-2 border border-theme-secondary rounded-lg focus:outline-none focus:border-theme-accent min-h-[100px]"
+              className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-theme-accent focus:border-transparent min-h-[100px]"
               placeholder="Describe your habit"
             />
           </div>
 
-          <div>
+          <div className="form-group">
             <label className="block text-theme-secondary mb-2">Category</label>
             <select
               value={formData.category}
               onChange={(e) =>
                 setFormData({ ...formData, category: e.target.value })
               }
-              className="w-full p-2 border border-theme-secondary rounded-lg focus:outline-none focus:border-theme-accent"
+              className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-theme-accent focus:border-transparent"
             >
               <option value="health">Health</option>
               <option value="work">Work</option>
@@ -98,28 +99,54 @@ const NewHabit = () => {
             </select>
 
             {formData.category === "custom" && (
-              <div className="mt-2">
-                <input
-                  type="text"
-                  value={formData.customCategory}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customCategory: e.target.value })
-                  }
-                  className="w-full p-2 border border-theme-secondary rounded-lg focus:outline-none focus:border-theme-accent"
-                  placeholder="Enter custom category"
-                  required
-                />
-              </div>
+              <input
+                type="text"
+                value={formData.customCategory}
+                onChange={(e) =>
+                  setFormData({ ...formData, customCategory: e.target.value })
+                }
+                className="mt-2 w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-theme-accent focus:border-transparent"
+                placeholder="Enter custom category"
+                required
+              />
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-theme-secondary mb-2">
-                Priority (1-5)
-              </label>
+          <div className="form-group">
+            <label className="block text-theme-secondary mb-2">Frequency</label>
+            <select
+              value={formData.frequency}
+              onChange={(e) =>
+                setFormData({ ...formData, frequency: e.target.value })
+              }
+              className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-theme-accent focus:border-transparent"
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="custom">Custom</option>
+            </select>
+
+            {formData.frequency === "custom" && (
               <input
-                type="number"
+                type="text"
+                value={formData.customFrequency}
+                onChange={(e) =>
+                  setFormData({ ...formData, customFrequency: e.target.value })
+                }
+                className="mt-2 w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-theme-accent focus:border-transparent"
+                placeholder="Enter custom frequency (e.g., '3 times per week')"
+                required
+              />
+            )}
+          </div>
+
+          <div className="form-group">
+            <label className="block text-theme-secondary mb-2">
+              Priority (1-5)
+            </label>
+            <div className="flex items-center gap-4">
+              <input
+                type="range"
                 min="1"
                 max="5"
                 value={formData.priority}
@@ -129,34 +156,37 @@ const NewHabit = () => {
                     priority: parseInt(e.target.value),
                   })
                 }
-                className="w-full p-2 border border-theme-secondary rounded-lg focus:outline-none focus:border-theme-accent"
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
               />
+              <span className="text-theme-secondary font-medium">
+                {formData.priority}
+              </span>
             </div>
+          </div>
 
-            <div>
-              <label className="block text-theme-secondary mb-2">Color</label>
-              <input
-                type="color"
-                value={formData.color}
-                onChange={(e) =>
-                  setFormData({ ...formData, color: e.target.value })
-                }
-                className="w-full h-10 p-1 border border-theme-secondary rounded-lg focus:outline-none focus:border-theme-accent"
-              />
-            </div>
+          <div className="form-group">
+            <label className="block text-theme-secondary mb-2">Color</label>
+            <input
+              type="color"
+              value={formData.color}
+              onChange={(e) =>
+                setFormData({ ...formData, color: e.target.value })
+              }
+              className="w-full h-10 p-1 border border-gray-200 rounded-lg cursor-pointer"
+            />
           </div>
 
           <div className="flex justify-end space-x-4 pt-4">
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="px-4 py-2 border border-theme-accent text-theme-accent rounded-lg hover:bg-theme-accent hover:text-white transition-colors"
+              className="px-6 py-2 border-2 border-theme-accent text-theme-accent rounded-lg hover:bg-theme-accent hover:text-white transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-theme-accent text-white rounded-lg hover:bg-opacity-90 transition-colors"
+              className="px-6 py-2 bg-theme-accent text-white rounded-lg hover:bg-opacity-90 transition-colors"
             >
               Create Habit
             </button>
