@@ -1,51 +1,74 @@
-import axios from "axios";
-import { useState } from "react";
+// src/App.js
+import {
+  Navigate,
+  Route,
+  BrowserRouter as Router,
+  Routes,
+} from "react-router-dom";
+import Header from "./components/Header";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import Login from "./pages/Login";
+import Profile from "./pages/Profile";
+import Register from "./pages/Register";
+
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  return children;
+};
 
 function App() {
-  const [testMessage, setTestMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const testServerConnection = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await axios.get("http://localhost:5000/test");
-      setTestMessage(response.data.message);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-primary-dark text-white">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8">HabitVizz</h1>
-
-        <div className="max-w-md mx-auto bg-primary p-6 rounded-lg shadow-lg">
-          <button
-            onClick={testServerConnection}
-            disabled={loading}
-            className="btn-primary w-full"
-          >
-            {loading ? "Testing..." : "Test Server Connection"}
-          </button>
-
-          {testMessage && (
-            <div className="mt-4 p-4 bg-green-800 rounded-md">
-              {testMessage}
-            </div>
-          )}
-
-          {error && (
-            <div className="mt-4 p-4 bg-red-800 rounded-md">Error: {error}</div>
-          )}
-        </div>
-      </div>
-    </div>
+    <Router>
+      {user && <Header />}
+      <Routes>
+        <Route
+          path="/login"
+          element={!user ? <Login /> : <Navigate to="/" />}
+        />
+        <Route
+          path="/register"
+          element={!user ? <Register /> : <Navigate to="/" />}
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <div className="min-h-screen bg-primary-dark">
+                {/* Your dashboard content will go here */}
+              </div>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Router>
   );
 }
 
-export default App;
+function AppWrapper() {
+  return (
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  );
+}
+
+export default AppWrapper;
