@@ -13,11 +13,11 @@ export default function Profile() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-md mx-auto bg-primary p-8 rounded-lg shadow-lg">
-        <h2 className="text-2xl font-bold text-white mb-6">Profile</h2>
+      <div className="max-w-md mx-auto bg-theme-primary p-8 rounded-lg shadow-lg">
+        <h2 className="text-2xl font-bold text-theme-accent mb-6">Profile</h2>
 
         <div className="mb-6">
-          <p className="text-white">
+          <p className="text-theme-accent">
             <span className="font-semibold">Username:</span> {user?.username}
           </p>
         </div>
