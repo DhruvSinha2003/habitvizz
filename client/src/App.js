@@ -8,6 +8,7 @@ import {
 import Header from "./components/Header";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import Register from "./pages/Register";
@@ -54,9 +55,7 @@ function App() {
             path="/"
             element={
               <ProtectedRoute>
-                <div className="min-h-screen bg-primary-dark">
-                  {/* Your dashboard content will go here */}
-                </div>
+                <Home />
               </ProtectedRoute>
             }
           />
