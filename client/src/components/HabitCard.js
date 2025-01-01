@@ -16,10 +16,12 @@ const HabitCard = ({ habit }) => {
   return (
     <div
       onClick={() => navigate(`/view-habit/${habit._id}`)}
-      className="bg-white rounded-xl p-6 hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100"
+      className="bg-theme-primary rounded-xl p-6 hover:shadow-xl transition-all duration-300 cursor-pointer"
     >
       <div className="flex justify-between items-start mb-4">
-        <h3 className="text-xl font-semibold text-gray-800">{habit.title}</h3>
+        <h3 className="text-xl font-semibold text-theme-accent">
+          {habit.title}
+        </h3>
         <div
           className="w-4 h-4 rounded-full"
           style={{ backgroundColor: habit.color }}
@@ -27,7 +29,7 @@ const HabitCard = ({ habit }) => {
       </div>
 
       <div className="space-y-4">
-        <div className="w-full bg-gray-100 rounded-full h-3">
+        <div className="w-full bg-theme-secondary/20 rounded-full h-3">
           <div
             className="h-3 rounded-full transition-all duration-300"
             style={{
@@ -38,17 +40,23 @@ const HabitCard = ({ habit }) => {
         </div>
 
         <div className="grid grid-cols-3 gap-4">
-          <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
-            <span className="text-sm text-gray-500">Frequency</span>
-            <span className="font-medium">{habit.frequency}</span>
+          <div className="flex flex-col items-center p-2 bg-theme-secondary/10 rounded-lg">
+            <span className="text-sm text-theme-secondary">Frequency</span>
+            <span className="font-medium text-theme-accent">
+              {habit.frequency}
+            </span>
           </div>
-          <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
-            <span className="text-sm text-gray-500">Progress</span>
-            <span className="font-medium">{calculateProgress()}%</span>
+          <div className="flex flex-col items-center p-2 bg-theme-secondary/10 rounded-lg">
+            <span className="text-sm text-theme-secondary">Progress</span>
+            <span className="font-medium text-theme-accent">
+              {calculateProgress()}%
+            </span>
           </div>
-          <div className="flex flex-col items-center p-2 bg-gray-50 rounded-lg">
-            <span className="text-sm text-gray-500">Streak</span>
-            <span className="font-medium">🔥 {habit.streak.current}</span>
+          <div className="flex flex-col items-center p-2 bg-theme-secondary/10 rounded-lg">
+            <span className="text-sm text-theme-secondary">Streak</span>
+            <span className="font-medium text-theme-accent">
+              🔥 {habit.streak.current}
+            </span>
           </div>
         </div>
       </div>

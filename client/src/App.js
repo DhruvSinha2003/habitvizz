@@ -8,10 +8,9 @@ import {
 import Header from "./components/Header";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
-import EditHabit from "./pages/EditHabit";
+import { default as EditHabit, default as NewHabit } from "./pages/HabitForm";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import NewHabit from "./pages/NewHabit";
 import Profile from "./pages/Profile";
 import Register from "./pages/Register";
 import ViewHabit from "./pages/ViewHabit";
