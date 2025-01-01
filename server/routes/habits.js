@@ -100,4 +100,190 @@ router.get("/:id", auth, async (req, res) => {
   }
 });
 
+router.post("/:id/complete", auth, async (req, res) => {
+  try {
+    const { date } = req.body;
+    const habit = await Habit.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!habit) {
+      return res
+        .status(404)
+        .json({ message: "Habit not found or unauthorized" });
+    }
+
+    // Add to progress array if not already completed
+    const completionDate = new Date(date);
+    completionDate.setHours(0, 0, 0, 0);
+
+    const existingProgress = habit.progress.find(
+      (p) =>
+        p.date.toISOString().split("T")[0] ===
+        completionDate.toISOString().split("T")[0]
+    );
+
+    if (!existingProgress) {
+      habit.progress.push({
+        date: completionDate,
+        completed: true,
+      });
+    }
+
+    // Sort progress by date for streak calculation
+    habit.progress.sort((a, b) => b.date - a.date);
+
+    // Calculate streak
+    let currentStreak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Start from most recent date
+    let checkDate = new Date(today);
+    let foundFirst = false;
+
+    while (checkDate >= new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000)) {
+      // Check up to 90 days back
+      let shouldCount = false;
+      const dayOfWeek = checkDate.getDay();
+
+      switch (habit.frequency) {
+        case "daily":
+          shouldCount = true;
+          break;
+        case "weekly":
+          shouldCount = dayOfWeek === 1; // Monday
+          break;
+        case "custom":
+          if (habit.customDays?.length > 0) {
+            shouldCount = habit.customDays.includes(dayOfWeek);
+          }
+          break;
+        default:
+          shouldCount = true;
+      }
+
+      if (shouldCount) {
+        const dateStr = checkDate.toISOString().split("T")[0];
+        const completed = habit.progress.some(
+          (p) => p.date.toISOString().split("T")[0] === dateStr && p.completed
+        );
+
+        if (completed) {
+          currentStreak++;
+          foundFirst = true;
+        } else if (foundFirst) {
+          // Break on first miss after finding a completion
+          break;
+        } else if (checkDate < today) {
+          // If we haven't found any completions and we're before today, break
+          break;
+        }
+      }
+
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    habit.streak = {
+      current: currentStreak,
+      longest: Math.max(habit.streak?.longest || 0, currentStreak),
+    };
+
+    await habit.save();
+    res.json(habit);
+  } catch (err) {
+    res
+      .status(400)
+      .json({ message: "Error completing habit", error: err.message });
+  }
+});
+
+router.post("/:id/uncomplete", auth, async (req, res) => {
+  try {
+    const { date } = req.body;
+    const habit = await Habit.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!habit) {
+      return res
+        .status(404)
+        .json({ message: "Habit not found or unauthorized" });
+    }
+
+    // Remove from progress array
+    const completionDate = new Date(date);
+    completionDate.setHours(0, 0, 0, 0);
+
+    habit.progress = habit.progress.filter(
+      (p) =>
+        p.date.toISOString().split("T")[0] !==
+        completionDate.toISOString().split("T")[0]
+    );
+
+    // Recalculate streak using the same logic as complete route
+    habit.progress.sort((a, b) => b.date - a.date);
+
+    let currentStreak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let checkDate = new Date(today);
+    let foundFirst = false;
+
+    while (checkDate >= new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000)) {
+      let shouldCount = false;
+      const dayOfWeek = checkDate.getDay();
+
+      switch (habit.frequency) {
+        case "daily":
+          shouldCount = true;
+          break;
+        case "weekly":
+          shouldCount = dayOfWeek === 1;
+          break;
+        case "custom":
+          if (habit.customDays?.length > 0) {
+            shouldCount = habit.customDays.includes(dayOfWeek);
+          }
+          break;
+        default:
+          shouldCount = true;
+      }
+
+      if (shouldCount) {
+        const dateStr = checkDate.toISOString().split("T")[0];
+        const completed = habit.progress.some(
+          (p) => p.date.toISOString().split("T")[0] === dateStr && p.completed
+        );
+
+        if (completed) {
+          currentStreak++;
+          foundFirst = true;
+        } else if (foundFirst) {
+          break;
+        } else if (checkDate < today) {
+          break;
+        }
+      }
+
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    habit.streak = {
+      current: currentStreak,
+      longest: Math.max(habit.streak?.longest || 0, currentStreak),
+    };
+
+    await habit.save();
+    res.json(habit);
+  } catch (err) {
+    res
+      .status(400)
+      .json({ message: "Error uncompleting habit", error: err.message });
+  }
+});
+
 module.exports = router;

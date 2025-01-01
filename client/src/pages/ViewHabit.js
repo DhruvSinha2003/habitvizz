@@ -34,24 +34,57 @@ const ViewHabit = () => {
   const [habit, setHabit] = useState(null);
   const [upcomingDates, setUpcomingDates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [weeklyProgress, setWeeklyProgress] = useState(0);
 
   useEffect(() => {
-    fetchHabit();
+    if (id) {
+      fetchHabit();
+    }
   }, [id]);
 
   const fetchHabit = async () => {
     try {
       const { data } = await api.get(`/api/habits/${id}`);
-      setHabit(data);
-      generateUpcomingDates(data);
+      if (data) {
+        // Ensure all dates in progress are proper Date objects
+        const processedData = {
+          ...data,
+          progress:
+            data.progress?.map((p) => ({
+              ...p,
+              date: new Date(p.date),
+            })) || [],
+        };
+        setHabit(processedData);
+        generateUpcomingDates(processedData);
+        calculateWeeklyProgress(processedData);
+      }
       setLoading(false);
     } catch (err) {
+      console.error("Error fetching habit:", err);
       toast.error("Error fetching habit");
       navigate("/");
     }
   };
 
+  const isSameDay = (date1, date2) => {
+    return (
+      date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate()
+    );
+  };
+
+  const isDateCompleted = (date, habit) => {
+    if (!habit?.progress) return false;
+    return habit.progress.some(
+      (p) => isSameDay(new Date(p.date), new Date(date)) && p.completed
+    );
+  };
+
   const generateUpcomingDates = (habit) => {
+    if (!habit) return;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dates = [];
@@ -62,29 +95,22 @@ const ViewHabit = () => {
       currentDate.setDate(today.getDate() + i);
 
       let shouldShow = false;
+      const dayOfWeek = currentDate.getDay();
 
       switch (habit.frequency) {
         case "daily":
           shouldShow = true;
           break;
-
         case "weekly":
-          shouldShow = currentDate.getDay() === 1;
+          shouldShow = dayOfWeek === 1;
           break;
-
         case "custom":
-          if (habit.customFrequency?.includes("week")) {
-            shouldShow = habit.customDays.includes(currentDate.getDay());
-          } else if (habit.customFrequency?.includes("month")) {
-            shouldShow = habit.customDays.includes(currentDate.getDate());
-          } else if (habit.customFrequency?.includes("year")) {
-            const monthIndex = currentDate.getMonth();
-            const day = currentDate.getDate();
-            const encodedDate = monthIndex * 31 + day;
-            shouldShow = habit.customDays.includes(encodedDate);
+          if (habit.customDays && habit.customDays.length > 0) {
+            shouldShow = habit.customDays.includes(dayOfWeek);
           }
           break;
         default:
+          shouldShow = true;
           break;
       }
 
@@ -92,7 +118,7 @@ const ViewHabit = () => {
         dates.push({
           date: currentDate,
           completed: isDateCompleted(currentDate, habit),
-          isToday: currentDate.getTime() === today.getTime(),
+          isToday: isSameDay(currentDate, today),
         });
       }
     }
@@ -100,28 +126,88 @@ const ViewHabit = () => {
     setUpcomingDates(dates);
   };
 
-  const isDateCompleted = (date, habit) => {
-    if (!habit?.completions) return false;
-    const dateStr = date.toISOString().split("T")[0];
-    return habit.completions.includes(dateStr);
+  const calculateWeeklyProgress = (habit) => {
+    if (!habit?.progress) {
+      setWeeklyProgress(0);
+      return;
+    }
+
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    // Get unique completed days this week
+    const uniqueCompletedDays = new Set();
+    habit.progress.forEach((p) => {
+      const date = new Date(p.date);
+      if (date >= startOfWeek && date <= endOfWeek && p.completed) {
+        uniqueCompletedDays.add(date.toDateString());
+      }
+    });
+
+    const completedDays = uniqueCompletedDays.size;
+
+    let requiredDays = 0;
+    switch (habit.frequency) {
+      case "daily":
+        requiredDays = 7;
+        break;
+      case "weekly":
+        requiredDays = 1;
+        break;
+      case "custom":
+        if (habit.customDays) {
+          requiredDays = habit.customDays.length;
+        }
+        break;
+      default:
+        requiredDays = 7;
+        break;
+    }
+
+    const progress =
+      requiredDays > 0 ? (completedDays / requiredDays) * 100 : 0;
+    setWeeklyProgress(Math.min(100, progress));
   };
 
   const handleCompletion = async (date) => {
+    if (!habit || !date) return;
+
     try {
       const dateStr = date.toISOString().split("T")[0];
       const isCompleted = isDateCompleted(date, habit);
 
+      // Optimistically update UI
+      const updatedHabit = {
+        ...habit,
+        progress: isCompleted
+          ? habit.progress.filter((p) => !isSameDay(new Date(p.date), date))
+          : [...habit.progress, { date: date, completed: true }],
+      };
+
+      setHabit(updatedHabit);
+      generateUpcomingDates(updatedHabit);
+      calculateWeeklyProgress(updatedHabit);
+
+      // Make API call
       if (isCompleted) {
         await api.post(`/api/habits/${id}/uncomplete`, { date: dateStr });
-        toast.success("Progress removed");
       } else {
         await api.post(`/api/habits/${id}/complete`, { date: dateStr });
-        toast.success("Great job! Keep it up! 🎉");
       }
 
-      fetchHabit();
+      // Fetch latest data to sync with server
+      await fetchHabit();
     } catch (err) {
+      console.error("Error updating completion status:", err);
       toast.error("Error updating completion status");
+      // Revert optimistic update on error
+      await fetchHabit();
     }
   };
 
@@ -136,19 +222,19 @@ const ViewHabit = () => {
       case "custom":
         if (habit.customFrequency?.includes("week")) {
           const days = habit.customDays
-            .map((dayIndex) => DAYS_OF_WEEK[dayIndex])
+            ?.map((dayIndex) => DAYS_OF_WEEK[dayIndex])
             .join(", ");
           return `Every ${days}`;
         }
         if (habit.customFrequency?.includes("month")) {
           const days = habit.customDays
-            .map((day) => `${day}${getOrdinalSuffix(day)}`)
+            ?.map((day) => `${day}${getOrdinalSuffix(day)}`)
             .join(", ");
           return `Monthly on: ${days}`;
         }
         if (habit.customFrequency?.includes("year")) {
           const dates = habit.customDays
-            .map((encoded) => {
+            ?.map((encoded) => {
               const month = Math.floor(encoded / 31);
               const day = encoded % 31;
               return `${MONTHS[month]} ${day}${getOrdinalSuffix(day)}`;
@@ -156,9 +242,9 @@ const ViewHabit = () => {
             .join(", ");
           return `Yearly on: ${dates}`;
         }
-        return habit.customFrequency;
+        return habit.customFrequency || "Custom";
       default:
-        return habit.frequency;
+        return "Daily";
     }
   };
 
@@ -214,7 +300,7 @@ const ViewHabit = () => {
 
         <div className="p-6 space-y-6">
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="p-4 bg-gray-50 rounded-lg">
               <p className="text-gray-600 mb-1">Current Streak</p>
               <p className="text-2xl font-bold">
@@ -225,6 +311,12 @@ const ViewHabit = () => {
               <p className="text-gray-600 mb-1">Longest Streak</p>
               <p className="text-2xl font-bold">
                 ⭐ {habit.streak?.longest || 0} days
+              </p>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <p className="text-gray-600 mb-1">Weekly Progress</p>
+              <p className="text-2xl font-bold">
+                📈 {weeklyProgress.toFixed(1)}%
               </p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg">
@@ -249,18 +341,19 @@ const ViewHabit = () => {
                   }`}
                 >
                   <div className="flex items-center space-x-4">
-                    {item.isToday ? (
-                      <input
-                        type="checkbox"
-                        checked={item.completed}
-                        onChange={() => handleCompletion(item.date)}
-                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                    ) : (
-                      <span className="text-xl">
-                        {item.completed ? "✅" : "⭕"}
-                      </span>
-                    )}
+                    <button
+                      onClick={() =>
+                        item.isToday && handleCompletion(item.date)
+                      }
+                      className={`text-xl ${
+                        !item.isToday
+                          ? "cursor-default"
+                          : "cursor-pointer hover:opacity-80"
+                      }`}
+                      disabled={!item.isToday}
+                    >
+                      {item.completed ? "✅" : "⭕"}
+                    </button>
                     <span>
                       {item.date.toLocaleDateString("en-US", {
                         weekday: "long",
@@ -285,12 +378,12 @@ const ViewHabit = () => {
               <p className="font-medium">
                 {habit.category === "custom"
                   ? habit.customCategory
-                  : habit.category}
+                  : habit.category || "Uncategorized"}
               </p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg">
               <p className="text-gray-600 mb-1">Priority</p>
-              <p className="font-medium">{habit.priority} / 5</p>
+              <p className="font-medium">{habit.priority || 1} / 5</p>
             </div>
           </div>
         </div>
