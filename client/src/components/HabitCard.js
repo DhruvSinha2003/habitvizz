@@ -1,22 +1,55 @@
-// src/components/HabitCard.js
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../utils/api";
 
-// HabitCard.js
-const HabitCard = ({ habit }) => {
+const HabitCard = ({ habit: initialHabit }) => {
   const navigate = useNavigate();
+  const [habit, setHabit] = useState(initialHabit);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchLatestHabitData = async () => {
+      try {
+        setLoading(true);
+        const { data } = await api.get(`/api/habits/${initialHabit._id}`);
+        setHabit(data);
+      } catch (err) {
+        console.error("Error fetching habit data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLatestHabitData();
+  }, [initialHabit._id]);
 
   const calculateProgress = () => {
     if (!habit.progress || habit.progress.length === 0) return 0;
-    const recentProgress = habit.progress.slice(-7);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const weekAgo = new Date(today);
+    weekAgo.setDate(today.getDate() - 7);
+
+    const recentProgress = habit.progress.filter((p) => {
+      const progressDate = new Date(p.date);
+      return progressDate >= weekAgo && progressDate <= today;
+    });
+
     const completed = recentProgress.filter((p) => p.completed).length;
     return Math.round((completed / 7) * 100);
   };
 
+  const handleCardClick = () => {
+    navigate(`/view-habit/${habit._id}`);
+  };
+
   return (
     <div
-      onClick={() => navigate(`/view-habit/${habit._id}`)}
-      className="bg-theme-primary rounded-xl p-6 hover:shadow-xl transition-all duration-300 cursor-pointer"
+      onClick={handleCardClick}
+      className={`bg-theme-primary rounded-xl p-6 hover:shadow-xl transition-all duration-300 cursor-pointer ${
+        loading ? "opacity-50" : ""
+      }`}
     >
       <div className="flex justify-between items-start mb-4">
         <h3 className="text-xl font-semibold text-theme-accent">

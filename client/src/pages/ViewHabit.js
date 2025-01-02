@@ -35,6 +35,7 @@ const ViewHabit = () => {
   const [upcomingDates, setUpcomingDates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [weeklyProgress, setWeeklyProgress] = useState(0);
+  const [optimisticUpdates, setOptimisticUpdates] = useState({});
 
   useEffect(() => {
     if (id) {
@@ -46,7 +47,6 @@ const ViewHabit = () => {
     try {
       const { data } = await api.get(`/api/habits/${id}`);
       if (data) {
-        // Ensure all dates in progress are proper Date objects
         const processedData = {
           ...data,
           progress:
@@ -75,15 +75,23 @@ const ViewHabit = () => {
     );
   };
 
-  const isDateCompleted = (date, habit) => {
+  const isDateCompleted = (date) => {
     if (!habit?.progress) return false;
+
+    // First check optimistic updates
+    const dateStr = date.toISOString().split("T")[0];
+    if (optimisticUpdates[dateStr] !== undefined) {
+      return optimisticUpdates[dateStr];
+    }
+
+    // Then check actual progress
     return habit.progress.some(
       (p) => isSameDay(new Date(p.date), new Date(date)) && p.completed
     );
   };
 
-  const generateUpcomingDates = (habit) => {
-    if (!habit) return;
+  const generateUpcomingDates = (habitData) => {
+    if (!habitData) return;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -97,7 +105,7 @@ const ViewHabit = () => {
       let shouldShow = false;
       const dayOfWeek = currentDate.getDay();
 
-      switch (habit.frequency) {
+      switch (habitData.frequency) {
         case "daily":
           shouldShow = true;
           break;
@@ -105,19 +113,18 @@ const ViewHabit = () => {
           shouldShow = dayOfWeek === 1;
           break;
         case "custom":
-          if (habit.customDays && habit.customDays.length > 0) {
-            shouldShow = habit.customDays.includes(dayOfWeek);
+          if (habitData.customDays && habitData.customDays.length > 0) {
+            shouldShow = habitData.customDays.includes(dayOfWeek);
           }
           break;
         default:
           shouldShow = true;
-          break;
       }
 
       if (shouldShow) {
         dates.push({
           date: currentDate,
-          completed: isDateCompleted(currentDate, habit),
+          completed: isDateCompleted(currentDate),
           isToday: isSameDay(currentDate, today),
         });
       }
@@ -126,8 +133,8 @@ const ViewHabit = () => {
     setUpcomingDates(dates);
   };
 
-  const calculateWeeklyProgress = (habit) => {
-    if (!habit?.progress) {
+  const calculateWeeklyProgress = (habitData) => {
+    if (!habitData?.progress) {
       setWeeklyProgress(0);
       return;
     }
@@ -141,19 +148,32 @@ const ViewHabit = () => {
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
 
-    // Get unique completed days this week
     const uniqueCompletedDays = new Set();
-    habit.progress.forEach((p) => {
+
+    // Include both actual progress and optimistic updates
+    habitData.progress.forEach((p) => {
       const date = new Date(p.date);
       if (date >= startOfWeek && date <= endOfWeek && p.completed) {
         uniqueCompletedDays.add(date.toDateString());
       }
     });
 
-    const completedDays = uniqueCompletedDays.size;
+    // Add optimistic updates
+    Object.entries(optimisticUpdates).forEach(([dateStr, completed]) => {
+      const date = new Date(dateStr);
+      if (date >= startOfWeek && date <= endOfWeek) {
+        if (completed) {
+          uniqueCompletedDays.add(date.toDateString());
+        } else {
+          uniqueCompletedDays.delete(date.toDateString());
+        }
+      }
+    });
 
+    const completedDays = uniqueCompletedDays.size;
     let requiredDays = 0;
-    switch (habit.frequency) {
+
+    switch (habitData.frequency) {
       case "daily":
         requiredDays = 7;
         break;
@@ -161,13 +181,12 @@ const ViewHabit = () => {
         requiredDays = 1;
         break;
       case "custom":
-        if (habit.customDays) {
-          requiredDays = habit.customDays.length;
+        if (habitData.customDays) {
+          requiredDays = habitData.customDays.length;
         }
         break;
       default:
         requiredDays = 7;
-        break;
     }
 
     const progress =
@@ -178,22 +197,16 @@ const ViewHabit = () => {
   const handleCompletion = async (date) => {
     if (!habit || !date) return;
 
+    const dateStr = date.toISOString().split("T")[0];
+    const isCompleted = isDateCompleted(date);
+
+    // Optimistically update UI
+    setOptimisticUpdates((prev) => ({
+      ...prev,
+      [dateStr]: !isCompleted,
+    }));
+
     try {
-      const dateStr = date.toISOString().split("T")[0];
-      const isCompleted = isDateCompleted(date, habit);
-
-      // Optimistically update UI
-      const updatedHabit = {
-        ...habit,
-        progress: isCompleted
-          ? habit.progress.filter((p) => !isSameDay(new Date(p.date), date))
-          : [...habit.progress, { date: date, completed: true }],
-      };
-
-      setHabit(updatedHabit);
-      generateUpcomingDates(updatedHabit);
-      calculateWeeklyProgress(updatedHabit);
-
       // Make API call
       if (isCompleted) {
         await api.post(`/api/habits/${id}/uncomplete`, { date: dateStr });
@@ -203,10 +216,25 @@ const ViewHabit = () => {
 
       // Fetch latest data to sync with server
       await fetchHabit();
+
+      // Clear optimistic update for this date
+      setOptimisticUpdates((prev) => {
+        const newUpdates = { ...prev };
+        delete newUpdates[dateStr];
+        return newUpdates;
+      });
     } catch (err) {
       console.error("Error updating completion status:", err);
       toast.error("Error updating completion status");
-      // Revert optimistic update on error
+
+      // Revert optimistic update
+      setOptimisticUpdates((prev) => {
+        const newUpdates = { ...prev };
+        delete newUpdates[dateStr];
+        return newUpdates;
+      });
+
+      // Refresh data
       await fetchHabit();
     }
   };
