@@ -85,9 +85,17 @@ const ViewHabit = () => {
     }
 
     // Then check actual progress
-    return habit.progress.some(
-      (p) => isSameDay(new Date(p.date), new Date(date)) && p.completed
-    );
+    return habit.progress.some((p) => {
+      // Convert both dates to local midnight
+      const progressDate = new Date(p.date);
+      const compareDate = new Date(date);
+
+      // Convert to local date strings for comparison
+      const progressDateStr = progressDate.toLocaleDateString();
+      const compareDateStr = compareDate.toLocaleDateString();
+
+      return progressDateStr === compareDateStr && p.completed;
+    });
   };
 
   const generateUpcomingDates = (habitData) => {
@@ -153,8 +161,9 @@ const ViewHabit = () => {
     // Include both actual progress and optimistic updates
     habitData.progress.forEach((p) => {
       const date = new Date(p.date);
+      const dateStr = date.toLocaleDateString(); // Use local date string for consistency
       if (date >= startOfWeek && date <= endOfWeek && p.completed) {
-        uniqueCompletedDays.add(date.toDateString());
+        uniqueCompletedDays.add(dateStr);
       }
     });
 
@@ -163,9 +172,9 @@ const ViewHabit = () => {
       const date = new Date(dateStr);
       if (date >= startOfWeek && date <= endOfWeek) {
         if (completed) {
-          uniqueCompletedDays.add(date.toDateString());
+          uniqueCompletedDays.add(date.toLocaleDateString());
         } else {
-          uniqueCompletedDays.delete(date.toDateString());
+          uniqueCompletedDays.delete(date.toLocaleDateString());
         }
       }
     });
