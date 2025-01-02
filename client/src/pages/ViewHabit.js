@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTimezone } from "../context/TimezoneContext";
 import api from "../utils/api";
 
 const DAYS_OF_WEEK = [
@@ -33,6 +34,7 @@ const ViewHabit = () => {
   const navigate = useNavigate();
   const [habit, setHabit] = useState(null);
   const [upcomingDates, setUpcomingDates] = useState([]);
+  const { timezone } = useTimezone();
   const [loading, setLoading] = useState(true);
   const [weeklyProgress, setWeeklyProgress] = useState(0);
   const [optimisticUpdates, setOptimisticUpdates] = useState({});
@@ -42,6 +44,12 @@ const ViewHabit = () => {
       fetchHabit();
     }
   }, [id]);
+
+  useEffect(() => {
+    if (habit) {
+      generateUpcomingDates(habit);
+    }
+  }, [timezone, habit]);
 
   const fetchHabit = async () => {
     try {
@@ -68,33 +76,49 @@ const ViewHabit = () => {
   };
 
   const isSameDay = (date1, date2) => {
+    const d1 = new Date(date1.toLocaleString("en-US", { timeZone: timezone }));
+    const d2 = new Date(date2.toLocaleString("en-US", { timeZone: timezone }));
+
     return (
-      date1.getFullYear() === date2.getFullYear() &&
-      date1.getMonth() === date2.getMonth() &&
-      date1.getDate() === date2.getDate()
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate()
     );
+  };
+
+  const isToday = (date) => {
+    const today = new Date();
+    return isSameDay(date, today);
   };
 
   const isDateCompleted = (date) => {
     if (!habit?.progress) return false;
 
     // First check optimistic updates
-    const dateStr = date.toISOString().split("T")[0];
+    const dateStr = new Date(
+      date.toLocaleString("en-US", { timeZone: timezone })
+    )
+      .toISOString()
+      .split("T")[0];
+
     if (optimisticUpdates[dateStr] !== undefined) {
       return optimisticUpdates[dateStr];
     }
 
-    // Then check actual progress
+    // Convert the input date to user timezone for comparison
+    const userDate = new Date(
+      date.toLocaleString("en-US", { timeZone: timezone })
+    );
+    userDate.setHours(0, 0, 0, 0);
+
     return habit.progress.some((p) => {
-      // Convert both dates to local midnight
       const progressDate = new Date(p.date);
-      const compareDate = new Date(date);
+      const userProgressDate = new Date(
+        progressDate.toLocaleString("en-US", { timeZone: timezone })
+      );
+      userProgressDate.setHours(0, 0, 0, 0);
 
-      // Convert to local date strings for comparison
-      const progressDateStr = progressDate.toLocaleDateString();
-      const compareDateStr = compareDate.toLocaleDateString();
-
-      return progressDateStr === compareDateStr && p.completed;
+      return userProgressDate.getTime() === userDate.getTime() && p.completed;
     });
   };
 
@@ -102,13 +126,17 @@ const ViewHabit = () => {
     if (!habitData) return;
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const userToday = new Date(
+      today.toLocaleString("en-US", { timeZone: timezone })
+    );
+    userToday.setHours(0, 0, 0, 0);
+
     const dates = [];
     const daysToShow = 30;
 
     for (let i = 0; i < daysToShow; i++) {
-      const currentDate = new Date(today);
-      currentDate.setDate(today.getDate() + i);
+      const currentDate = new Date(userToday);
+      currentDate.setDate(userToday.getDate() + i);
 
       let shouldShow = false;
       const dayOfWeek = currentDate.getDay();
@@ -133,12 +161,60 @@ const ViewHabit = () => {
         dates.push({
           date: currentDate,
           completed: isDateCompleted(currentDate),
-          isToday: isSameDay(currentDate, today),
+          isToday: isToday(currentDate),
         });
       }
     }
 
     setUpcomingDates(dates);
+  };
+
+  const handleCompletion = async (date) => {
+    if (!habit || !date) return;
+
+    const userDate = new Date(
+      date.toLocaleString("en-US", { timeZone: timezone })
+    );
+    const dateStr = userDate.toISOString().split("T")[0];
+    const isCompleted = isDateCompleted(date);
+
+    // Optimistically update UI
+    setOptimisticUpdates((prev) => ({
+      ...prev,
+      [dateStr]: !isCompleted,
+    }));
+
+    try {
+      if (isCompleted) {
+        await api.post(`/api/habits/${id}/uncomplete`, {
+          date: dateStr,
+        });
+      } else {
+        await api.post(`/api/habits/${id}/complete`, {
+          date: dateStr,
+        });
+      }
+
+      await fetchHabit();
+
+      setOptimisticUpdates((prev) => {
+        const newUpdates = { ...prev };
+        delete newUpdates[dateStr];
+        return newUpdates;
+      });
+    } catch (err) {
+      console.error("Error updating completion status:", err);
+      toast.error("Error updating completion status");
+
+      // Revert optimistic update
+      setOptimisticUpdates((prev) => {
+        const newUpdates = { ...prev };
+        delete newUpdates[dateStr];
+        return newUpdates;
+      });
+
+      await fetchHabit();
+    }
   };
 
   const calculateWeeklyProgress = (habitData) => {
@@ -201,51 +277,6 @@ const ViewHabit = () => {
     const progress =
       requiredDays > 0 ? (completedDays / requiredDays) * 100 : 0;
     setWeeklyProgress(Math.min(100, progress));
-  };
-
-  const handleCompletion = async (date) => {
-    if (!habit || !date) return;
-
-    const dateStr = date.toISOString().split("T")[0];
-    const isCompleted = isDateCompleted(date);
-
-    // Optimistically update UI
-    setOptimisticUpdates((prev) => ({
-      ...prev,
-      [dateStr]: !isCompleted,
-    }));
-
-    try {
-      // Make API call
-      if (isCompleted) {
-        await api.post(`/api/habits/${id}/uncomplete`, { date: dateStr });
-      } else {
-        await api.post(`/api/habits/${id}/complete`, { date: dateStr });
-      }
-
-      // Fetch latest data to sync with server
-      await fetchHabit();
-
-      // Clear optimistic update for this date
-      setOptimisticUpdates((prev) => {
-        const newUpdates = { ...prev };
-        delete newUpdates[dateStr];
-        return newUpdates;
-      });
-    } catch (err) {
-      console.error("Error updating completion status:", err);
-      toast.error("Error updating completion status");
-
-      // Revert optimistic update
-      setOptimisticUpdates((prev) => {
-        const newUpdates = { ...prev };
-        delete newUpdates[dateStr];
-        return newUpdates;
-      });
-
-      // Refresh data
-      await fetchHabit();
-    }
   };
 
   const getFrequencyDisplay = (habit) => {

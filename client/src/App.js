@@ -8,6 +8,7 @@ import {
 import Header from "./components/Header";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { TimezoneProvider } from "./context/TimezoneContext";
 import { default as EditHabit, default as NewHabit } from "./pages/HabitForm";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -95,9 +96,11 @@ function App() {
 function AppWrapper() {
   return (
     <AuthProvider>
-      <ThemeProvider>
-        <App />
-      </ThemeProvider>
+      <TimezoneProvider>
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      </TimezoneProvider>
     </AuthProvider>
   );
 }

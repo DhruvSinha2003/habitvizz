@@ -102,7 +102,7 @@ router.get("/:id", auth, async (req, res) => {
 
 router.post("/:id/complete", auth, async (req, res) => {
   try {
-    const { date } = req.body;
+    const { date, timezone } = req.body;
     const habit = await Habit.findOne({
       _id: req.params.id,
       user: req.user._id,
@@ -114,19 +114,24 @@ router.post("/:id/complete", auth, async (req, res) => {
         .json({ message: "Habit not found or unauthorized" });
     }
 
-    // Add to progress array if not already completed
-    const completionDate = new Date(date);
-    completionDate.setHours(0, 0, 0, 0);
-
-    const existingProgress = habit.progress.find(
-      (p) =>
-        p.date.toISOString().split("T")[0] ===
-        completionDate.toISOString().split("T")[0]
+    // Convert date to UTC for storage
+    const userDate = new Date(date);
+    const utcDate = new Date(
+      userDate.toLocaleString("en-US", { timeZone: "UTC" })
     );
+    utcDate.setHours(0, 0, 0, 0);
+
+    const existingProgress = habit.progress.find((p) => {
+      const progressDate = new Date(p.date);
+      return (
+        progressDate.toISOString().split("T")[0] ===
+        utcDate.toISOString().split("T")[0]
+      );
+    });
 
     if (!existingProgress) {
       habit.progress.push({
-        date: completionDate,
+        date: utcDate,
         completed: true,
       });
     }
